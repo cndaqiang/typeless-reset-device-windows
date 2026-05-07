@@ -57,8 +57,6 @@ bash reset-device-macos.sh
 uv run python3 import.py backup_<时间戳>/
 ```
 
-
-
 ## 原理（逆向分析）
 
 ### Device ID
@@ -82,6 +80,8 @@ Device ID 在 macOS 的存储位置：
 |------|------|
 | Keychain | service: `now.typeless.desktop.deviceIdentifier` · account: `now.typeless.desktop.security.auth_key` |
 | 本地 cache | `~/Library/Application Support/now.typeless.desktop/device.cache` |
+
+把这两处清干净，下次启动 Typeless 就会生成全新的 Device ID，服务端将其视为一台新设备。
 
 ### 词典 API
 

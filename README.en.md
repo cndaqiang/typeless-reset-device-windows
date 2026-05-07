@@ -86,7 +86,7 @@ Device ID storage locations on macOS:
 | Keychain | service: `now.typeless.desktop.deviceIdentifier` · account: `now.typeless.desktop.security.auth_key` |
 | Local cache | `~/Library/Application Support/now.typeless.desktop/device.cache` |
 
-> The service is constructed as `Bundle.main.bundleIdentifier + ".deviceIdentifier"`, and the account as `Bundle.main.bundleIdentifier + ".security.auth_key"`.
+Clean these two spots, and the next time you start Typeless, it will generate a completely new Device ID, which the server will treat as a new device.
 
 ### Dictionary API
 
