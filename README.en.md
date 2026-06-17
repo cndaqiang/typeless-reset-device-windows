@@ -8,9 +8,9 @@
 
 ## Background
 
-> Typeless v1.6.0, macOS
+> Typeless v1.8.0, macOS
 
-New Typeless accounts come with a one-month free Pro trial. After logging into multiple accounts on the same machine, you may see:
+New Typeless accounts come with a one-month free Pro trial (**Note**: accounts registered with custom domain emails no longer qualify for the free trial. Use a regular email provider like Gmail instead). After logging into multiple accounts on the same machine, you may see:
 
 ```
 The number of users logged into this device has exceeded the limit.
@@ -22,7 +22,7 @@ This tool provides two things:
 1. **Reset Device ID** — makes the server treat your machine as a new device
 2. **Migrate account data** — including personal dictionary (cloud API), history records, and recordings
 
-If you just want to solve the device limit issue, simply run `bash reset-device-macos.sh` to reset the device ID. You can then login with a new account without seeing the error above (free trial!).
+If you just want to solve the device limit issue, simply run `bash reset-device-macos.sh` to reset the device ID. You can then login with a new account without seeing the error above (free trial with a regular email — custom domain emails won't work).
 
 If you also want to migrate your data, keep reading ↓↓↓
 
@@ -98,7 +98,7 @@ Dictionary data is stored only on Typeless servers — there is no local copy. `
 
 ### Local database
 
-Each row in `typeless.db`'s `history` table has a `user_id` field binding it to a specific account. Migration updates this field from the old `user_id` to the new one. Recording files (`.ogg`) require no modification.
+Each row in `typeless.db`'s `history` and `history_v2` tables has a `user_id` field binding it to a specific account (since v1.8.0, `history_v2` is the active table; `history` is legacy). Migration updates this field from the old `user_id` to the new one. Recording files (`.ogg`) require no modification.
 
 ### Encryption details
 
