@@ -1,10 +1,12 @@
 """
-Shared encryption and signing utilities for Typeless data migration (v1.3.0).
+Shared encryption and signing utilities for Typeless data migration (v1.8.0).
 
-Updated from typeless-migrator for Typeless v1.3.0.98:
-- HMAC_KEY and AES_PASSWORD changed
-- SM3 hash removed from X-Authorization (p = sha1_hash directly)
-- APP_VERSION format unchanged ("mac_1.3.0")
+Updated for Typeless v1.8.0.109:
+- HMAC_KEY and AES_PASSWORD changed (extracted from app.asar)
+- Key roles same as v1.6.0 (no swap):
+  - SHA1 secret key uses AES_PASSWORD
+  - X-Authorization AES encrypt uses HMAC_KEY
+- APP_VERSION format unchanged ("mac_1.8.0")
 
 Handles:
 - Decrypting electron-store's user-data.json (AES-256-CBC with double PBKDF2)
@@ -23,24 +25,24 @@ import time
 from Crypto.Cipher import AES
 from Crypto.Util.Padding import pad, unpad
 
-# ── App constants (extracted from Typeless v1.3.0 renderer bundle) ──
+# ── App constants (extracted from Typeless v1.8.0 renderer bundle) ──
 
-# From BkwJw9Ll.js: export { ... s as a } where s = "mac_"
+# From BVzq7g-e.js: export { c as a } where c = "mac_"  (unchanged)
 VERSION_PREFIX = "mac_"
-APP_VERSION_NUM = "1.3.0"
+APP_VERSION_NUM = "1.8.0"
 APP_VERSION = f"{VERSION_PREFIX}{APP_VERSION_NUM}"
 
-# From BPn-hrsg.js: Sa = "9088eaec..."
-HMAC_KEY = "9088eaec863c54571b4f28f6535b5f2526be3f5015791e659e4bdb31"
+# From D02A1pxL.js (v1.8.0): c = "808ddd9f..."  → X-Authorization AES encrypt
+HMAC_KEY = "808ddd9f894b8d1fc0bb8771e35d276e2959388a8c840266e8769bee"
 
-# From BPn-hrsg.js: _n = "46d40fe4..."
-AES_PASSWORD = "46d40fe4218b857cae25f9c01c2664a98833fc69a0fda798c709fd1f"
+# From D02A1pxL.js (v1.8.0): d = "381f6322..."  → SHA1 secret key
+AES_PASSWORD = "381f632293e164780201c4306da52a91c60a907f30e59cd264942c91"
 
 ENV = "prod"
 USER_AGENT = (
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
     "AppleWebKit/537.36 (KHTML, like Gecko) "
-    "Typeless/1.3.0 Chrome/130.0.6723.191 Electron/33.4.11 Safari/537.36"
+    "Typeless/1.8.0 Chrome/130.0.6723.191 Electron/33.4.11 Safari/537.36"
 )
 CLIENT_URL = (
     "file:///Applications/Typeless.app/Contents/Resources/"
@@ -171,9 +173,9 @@ def get_device_id():
 def build_security_headers(path, user_id, auth_token, device_id=None):
     """Build the full set of HTTP headers including security signing.
 
-    v1.3.0 changes from v1.2.0:
-    - HMAC_KEY and AES_PASSWORD changed
-    - X-Authorization 'p' field = sha1_hash (no SM3 wrapper)
+    v1.8.0 changes from v1.6.0:
+    - HMAC_KEY and AES_PASSWORD values changed (no role swap)
+    - sha1_secret_key uses AES_PASSWORD, X-Authorization uses HMAC_KEY (same as v1.6.0)
 
     Args:
         path: API path (e.g., "/user/dictionary/add")
@@ -189,22 +191,18 @@ def build_security_headers(path, user_id, auth_token, device_id=None):
 
     timestamp = int(time.time() * 1000)
 
-    # In v1.3.0, the version format is "mac_1.3.0" (prefix + major version)
-    # The major version is extracted: "1.3.0" → "1.3.0" (no change with split)
-    # Actually: r = zn + un.split("-")[0] where zn="mac_", un="1.3.0"
-    # → r = "mac_1.3.0"
+    # Version format: "mac_1.8.0" (prefix + version number)
     version = APP_VERSION
 
     # HMAC-SHA1 signing
+    # v1.8.0: sha1_secret_key uses AES_PASSWORD (same role as v1.6.0)
     sign_str = f"{timestamp}:{version}:{path}:{user_id}"
-    sha1_secret_key = f"{timestamp}:{HMAC_KEY}"
+    sha1_secret_key = f"{timestamp}:{AES_PASSWORD}"
     sha1_hash = hmaclib.new(
         sha1_secret_key.encode(), sign_str.encode(), hashlib.sha1
     ).hexdigest()
 
-    # In v1.3.0: p = sha1_hash directly (no SM3 wrapping like v1.2.0)
-    # In v1.2.0: sm3_sign = sm3(f"{timestamp}:{sha1_hash}:{HMAC_KEY}")
-    # In v1.3.0: p = sha1_hash
+    # v1.3.0+ p = sha1_hash directly (no SM3 wrapping)
 
     # X-Authorization encrypted payload
     x_auth_data = {
@@ -217,8 +215,9 @@ def build_security_headers(path, user_id, auth_token, device_id=None):
         "d": device_id,
         "3c86e26ccbb7274f752e7d868a1541ebfb7f37e7": {"a": ""},
     }
+    # v1.8.0: X-Authorization encrypted with HMAC_KEY (same role as v1.6.0)
     x_authorization = cryptojs_aes_encrypt(
-        json.dumps(x_auth_data, separators=(",", ":")), AES_PASSWORD
+        json.dumps(x_auth_data, separators=(",", ":")), HMAC_KEY
     )
 
     return {

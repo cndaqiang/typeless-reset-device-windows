@@ -8,7 +8,7 @@
 
 ## 背景
 
-> Typeless v1.3.0，macOS 版
+> Typeless v1.6.0，macOS 版
 
 Typeless 新注册账号可以免费试用 Pro 一个月。但当你在同一台设备上登录多个账号后，会出现以下报错：
 

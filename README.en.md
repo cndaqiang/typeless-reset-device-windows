@@ -8,7 +8,7 @@
 
 ## Background
 
-> Typeless v1.3.0, macOS
+> Typeless v1.6.0, macOS
 
 New Typeless accounts come with a one-month free Pro trial. After logging into multiple accounts on the same machine, you may see:
 
