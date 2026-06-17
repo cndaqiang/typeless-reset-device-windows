@@ -145,7 +145,10 @@ def import_dictionary(backup_dir):
 
 
 def migrate_database(backup_dir):
-    """Migrate history records from old user_id to new user_id in typeless.db."""
+    """Migrate history records from old user_id to new user_id in typeless.db.
+
+    Handles both 'history' and 'history_v2' tables (v1.8.0 added history_v2).
+    """
     meta_path = os.path.join(backup_dir, "export_meta.json")
     old_user_id = None
     if os.path.isfile(meta_path):
@@ -170,9 +173,14 @@ def migrate_database(backup_dir):
         backup_db = os.path.join(backup_dir, "typeless.db")
         if os.path.isfile(backup_db):
             bconn = sqlite3.connect(backup_db)
-            bcur = bconn.execute("SELECT DISTINCT user_id FROM history LIMIT 1")
-            brow = bcur.fetchone()
-            old_user_id = brow[0] if brow else None
+            for table in ("history", "history_v2"):
+                bcur = bconn.execute(
+                    f"SELECT DISTINCT user_id FROM {table} WHERE user_id IS NOT NULL LIMIT 1"
+                )
+                brow = bcur.fetchone()
+                if brow:
+                    old_user_id = brow[0]
+                    break
             bconn.close()
 
     if not old_user_id:
@@ -186,19 +194,36 @@ def migrate_database(backup_dir):
         conn.close()
         return
 
-    # Migrate: update history records from old to new
-    cur = conn.execute("SELECT COUNT(*) FROM history WHERE user_id = ?", (old_user_id,))
-    count = cur.fetchone()[0]
-    if count == 0:
-        print(f"[db] No records with old user_id {old_user_id}, skipping.")
-        conn.close()
-        return
+    # Migrate all history tables that exist in the current DB
+    migrated = 0
+    cur = conn.execute(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name IN ('history', 'history_v2')"
+    )
+    tables = [row[0] for row in cur.fetchall()]
 
-    conn.execute("UPDATE history SET user_id = ? WHERE user_id = ?", (new_user_id, old_user_id))
-    conn.commit()
+    for table in tables:
+        cur = conn.execute(
+            f"SELECT COUNT(*) FROM {table} WHERE user_id = ?", (old_user_id,)
+        )
+        count = cur.fetchone()[0]
+        if count == 0:
+            print(f"[db] No records in {table} with old user_id, skipping.")
+            continue
+
+        conn.execute(
+            f"UPDATE {table} SET user_id = ? WHERE user_id = ?",
+            (new_user_id, old_user_id),
+        )
+        conn.commit()
+        migrated += count
+        print(f"[db] Migrated {count} records in {table}: {old_user_id} → {new_user_id}")
+
+    if migrated == 0:
+        print("[db] No records to migrate.")
+    else:
+        print(f"[db] Total migrated: {migrated} history records")
+
     conn.close()
-
-    print(f"[db] Migrated {count} history records: {old_user_id} → {new_user_id}")
 
 
 def restore_recordings(backup_dir):
@@ -271,8 +296,10 @@ def main():
     conn = sqlite3.connect(db_path)
     cur = conn.execute("SELECT COUNT(*) FROM history")
     total = cur.fetchone()[0]
+    cur = conn.execute("SELECT COUNT(*) FROM history_v2")
+    total_v2 = cur.fetchone()[0]
     conn.close()
-    print(f"Done! Account: {user['email']}, History records: {total}")
+    print(f"Done! Account: {user['email']}, History: {total} (v1), {total_v2} (v2)")
 
 
 if __name__ == "__main__":

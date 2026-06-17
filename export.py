@@ -106,20 +106,27 @@ def export_local(backup_dir):
         shutil.copy2(db_path, dst)
         print(f"[db]   Copied typeless.db")
 
-        # Show summary
+        # Show summary for all history tables
         conn = sqlite3.connect(db_path)
-        cur = conn.execute("SELECT COUNT(*) FROM history")
-        count = cur.fetchone()[0]
+        old_user_id = None
+        cur = conn.execute(
+            "SELECT name FROM sqlite_master "
+            "WHERE type='table' AND name IN ('history', 'history_v2')"
+        )
+        tables = [row[0] for row in cur.fetchall()]
+        for table in tables:
+            cur = conn.execute(f"SELECT COUNT(*) FROM {table}")
+            count = cur.fetchone()[0]
+            print(f"[db]   {table}: {count} records")
+            if old_user_id is None:
+                cur = conn.execute(
+                    f"SELECT DISTINCT user_id FROM {table} LIMIT 1"
+                )
+                row = cur.fetchone()
+                old_user_id = row[0] if row else None
         conn.close()
 
-        # Record the current user_id for migration
-        conn = sqlite3.connect(db_path)
-        cur = conn.execute("SELECT DISTINCT user_id FROM history LIMIT 1")
-        row = cur.fetchone()
-        old_user_id = row[0] if row else None
-        conn.close()
-
-        print(f"[db]   {count} history records, user_id: {old_user_id}")
+        print(f"[db]   user_id: {old_user_id}")
     else:
         print("[db]   typeless.db not found, skipping")
         old_user_id = None
