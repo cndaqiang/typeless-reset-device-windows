@@ -1,3 +1,40 @@
+# Windows 补充：清理 Typeless 本机设备标识
+
+本 fork 额外记录一个 Windows 下的简单处理方式。
+如果 Typeless 提示：
+
+```text
+The number of users logged into this device has exceeded the limit.
+```
+
+可以打开 PowerShell，执行下面几条命令：
+
+```powershell
+taskkill /F /IM Typeless.exe /T 2>$null
+
+cmdkey /delete:Typeless.deviceIdentifier
+
+Remove-Item "$env:LOCALAPPDATA\typeless-updater" -Recurse -Force -ErrorAction SilentlyContinue
+Remove-Item "$env:LOCALAPPDATA\Typeless" -Recurse -Force -ErrorAction SilentlyContinue
+Remove-Item "$env:APPDATA\Typeless.exe" -Recurse -Force -ErrorAction SilentlyContinue
+Remove-Item "$env:APPDATA\Typeless" -Recurse -Force -ErrorAction SilentlyContinue
+
+cmdkey /list | Select-String -Pattern "typeless|deviceIdentifier|auth_key|now\.typeless" -Context 2,2
+```
+
+如果最后一条命令没有输出，说明 Typeless 相关的 Windows 凭据已经清空。
+
+执行完成后，重新打开 Typeless 登录。
+
+---
+
+以下为原 README 内容。
+
+---
+
+
+
+
 # typeless-reset-device
 
 **解除 Typeless macOS 设备登录限制 + 迁移个人词典到新账号**
